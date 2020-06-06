@@ -3,9 +3,10 @@ import math
 import itertools as it
 from mapbox_earcut import triangulate_float32 as earcut
 
+from manimlib.constants import RIGHT
+from manimlib.constants import UP
 from manimlib.constants import OUT
 from manimlib.constants import PI
-from manimlib.constants import RIGHT
 from manimlib.constants import TAU
 from manimlib.utils.iterables import adjacent_pairs
 
@@ -84,6 +85,22 @@ def thick_diagonal(dim, thickness=2):
     return (np.abs(row_indices - col_indices) < thickness).astype('uint8')
 
 
+def rotation_matrix_transpose_from_quaternion(quat):
+    quat_inv = quaternion_conjugate(quat)
+    return [
+        quaternion_mult(quat, [0, *basis], quat_inv)[1:]
+        for basis in [
+            [1, 0, 0],
+            [0, 1, 0],
+            [0, 0, 1],
+        ]
+    ]
+
+
+def rotation_matrix_from_quaternion(quat):
+    return np.transpose(rotation_matrix_transpose_from_quaternion(quat))
+
+
 def rotation_matrix_transpose(angle, axis):
     if axis[0] == 0 and axis[1] == 0:
         # axis = [0, 0, z] case is common enough it's worth
@@ -97,15 +114,7 @@ def rotation_matrix_transpose(angle, axis):
             [0, 0, 1],
         ]
     quat = quaternion_from_angle_axis(angle, axis)
-    quat_inv = quaternion_conjugate(quat)
-    return [
-        quaternion_mult(quat, [0, *basis], quat_inv)[1:]
-        for basis in [
-            [1, 0, 0],
-            [0, 1, 0],
-            [0, 0, 1],
-        ]
-    ]
+    return rotation_matrix_transpose_from_quaternion(quat)
 
 
 def rotation_matrix(angle, axis):
@@ -128,25 +137,14 @@ def z_to_vector(vector):
     Returns some matrix in SO(3) which takes the z-axis to the
     (normalized) vector provided as an argument
     """
-    norm = get_norm(vector)
-    if norm == 0:
-        return np.identity(3)
-    v = np.array(vector) / norm
-    phi = np.arccos(v[2])
-    if any(v[:2]):
-        # projection of vector to unit circle
-        axis_proj = v[:2] / get_norm(v[:2])
-        theta = np.arccos(axis_proj[0])
-        if axis_proj[1] < 0:
-            theta = -theta
-    else:
-        theta = 0
-    phi_down = np.array([
-        [math.cos(phi), 0, math.sin(phi)],
-        [0, 1, 0],
-        [-math.sin(phi), 0, math.cos(phi)]
-    ])
-    return np.dot(rotation_about_z(theta), phi_down)
+    axis = cross(OUT, vector)
+    if get_norm(axis) == 0:
+        if vector[2] > 0:
+            return np.identity(3)
+        else:
+            return rotation_matrix(PI, RIGHT)
+    angle = np.arccos(np.dot(OUT, normalize(vector)))
+    return rotation_matrix(angle, axis=axis)
 
 
 def angle_of_vector(vector):
@@ -180,6 +178,14 @@ def normalize(vect, fall_back=None):
         return np.zeros(len(vect))
 
 
+def normalize_along_axis(array, axis, fall_back=None):
+    norms = np.sqrt((array * array).sum(axis))
+    norms[norms == 0] = 1
+    buffed_norms = np.repeat(norms, array.shape[axis]).reshape(array.shape)
+    array /= buffed_norms
+    return array
+
+
 def cross(v1, v2):
     return np.array([
         v1[1] * v2[2] - v1[2] * v2[1],
@@ -188,8 +194,19 @@ def cross(v1, v2):
     ])
 
 
-def get_unit_normal(v1, v2):
-    return normalize(cross(v1, v2))
+def get_unit_normal(v1, v2, tol=1e-6):
+    v1 = normalize(v1)
+    v2 = normalize(v2)
+    cp = cross(v1, v2)
+    cp_norm = get_norm(cp)
+    if cp_norm < tol:
+        # Vectors align, so find a normal to them in the plane shared with the z-axis
+        new_cp = cross(cross(v1, OUT), v1)
+        new_cp_norm = get_norm(new_cp)
+        if new_cp_norm < tol:
+            return UP
+        return new_cp / new_cp_norm
+    return cp / cp_norm
 
 
 ###
