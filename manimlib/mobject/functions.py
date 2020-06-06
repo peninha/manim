@@ -12,6 +12,7 @@ class ParametricFunction(VMobject):
         "dt": 1e-8,
         # TODO, be smarter about figuring these out?
         "discontinuities": [],
+        "parameters": {},
     }
 
     def __init__(self, function=None, **kwargs):
@@ -23,7 +24,7 @@ class ParametricFunction(VMobject):
         return self.function
 
     def get_point_from_function(self, t):
-        return self.function(t)
+        return self.function(t, **self.parameters)
 
     def get_step_size(self, t=None):
         if self.step_size == "auto":
@@ -65,7 +66,8 @@ class ParametricFunction(VMobject):
             t_range = list(np.arange(t1, t2, self.get_step_size(t1)))
             if t_range[-1] != t2:
                 t_range.append(t2)
-            points = np.array([self.function(t) for t in t_range])
+            points = np.array([self.function(t, **self.parameters) 
+                               for t in t_range])
             valid_indices = np.apply_along_axis(
                 np.all, 1, np.isfinite(points)
             )
@@ -87,7 +89,7 @@ class FunctionGraph(ParametricFunction):
     def __init__(self, function, **kwargs):
         digest_config(self, kwargs)
         self.parametric_function = \
-            lambda t: np.array([t, function(t), 0])
+            lambda t: np.array([t, function(t, **self.parameters), 0])
         ParametricFunction.__init__(
             self,
             self.parametric_function,
