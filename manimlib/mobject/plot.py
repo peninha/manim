@@ -12,26 +12,15 @@ from manimlib.mobject.types.vectorized_mobject import VGroup
 from manimlib.utils.color import color_gradient
 from manimlib.utils.bezier import interpolate
 
-#from manimlib.mobject.svg.brace import Brace
-#from manimlib.utils.iterables import tuplify
+
+def is_sequence(arg):
+    return (not hasattr(arg, "strip") and
+            (hasattr(arg, "__getitem__") or hasattr(arg, "__iter__")))
 
 
 class Plot(VGroup):
     CONFIG = {
-        #"height": 4,
-        #"width": 6,
-        #"n_ticks": 4,
-        #"tick_width": 0.2,
-        #"label_y_axis": True,
-        #"y_axis_label_height": 0.25,
-        #"max_value": 1,
-        #"bar_colors": [BLUE, YELLOW],
-        #"bar_fill_opacity": 0.8,
-        #"bar_stroke_width": 3,
-        #"bar_names": [],
-        #"bar_label_scale_val": 0.75,
-        
-        "x_min": -1,
+        "x_min": 0,
         "x_max": 10,
         "x_axis_width": 9,
         "x_tick_frequency": 1,
@@ -41,9 +30,9 @@ class Plot(VGroup):
         "x_axis_label": "$x$",
         "x_axis_label_position": UR,
         "x_axis_label_buff": SMALL_BUFF,
-        #"x_axis_label_orientation":  # TO BE IMPLEMENTED
-        
-        "y_min": -1,
+        # "x_axis_label_orientation":  # TO BE IMPLEMENTED
+
+        "y_min": 0,
         "y_max": 10,
         "y_axis_height": 6,
         "y_tick_frequency": 1,
@@ -53,17 +42,19 @@ class Plot(VGroup):
         "y_axis_label": "$y$",
         "y_axis_label_position": UR,
         "y_axis_label_buff": SMALL_BUFF,
-        #"y_axis_label_orientation":  # TO BE IMPLEMENTED
-        
+        # "y_axis_label_orientation":  # TO BE IMPLEMENTED
+
         "default_dot_radius": 0.04,
         "default_dot_opacity": 1.0,
         "default_dot_stroke_width": 0,
-        
-        "default_bar_rwidth": 1.0,
+
         "default_bar_opacity": 1.0,
         "default_bar_stroke_width": 0,
-        "default_bar_align": LEFT,  # For mid align use ORIGIN
-        
+
+        "default_hist_bins": 10,
+        "default_hist_density": False,
+        "default_hist_rwidth": 1,
+
         "axes_color": GREY,
         "exclude_zero_label": True,
         "default_graph_colors": [BLUE, GREEN, YELLOW],
@@ -77,23 +68,16 @@ class Plot(VGroup):
 
     def __init__(self, **kwargs):
         VGroup.__init__(self, **kwargs)
-        #digest_config(self, kwargs)
-        #if self.max_value is None:
-        #    self.max_value = max(values)
-
-        #self.add_axes()
-        #self.add_bars(values)
-        self.graph_origin = (0,0,0)
         self.setup()
         self.setup_axes()
         self.center()
-    
+
     def setup(self):
         self.default_graph_colors_cycle = it.cycle(self.default_graph_colors)
-        #self.left_T_label = VGroup()
-        #self.left_v_line = VGroup()
-        #self.right_T_label = VGroup()
-        #self.right_v_line = VGroup()
+        # self.left_T_label = VGroup()
+        # self.left_v_line = VGroup()
+        # self.right_T_label = VGroup()
+        # self.right_v_line = VGroup()
 
     def setup_axes(self, animate=False):
         # X axis ---------------------
@@ -147,7 +131,7 @@ class Plot(VGroup):
             color=self.axes_color,
             label_direction=LEFT,
         )
-        y_axis.shift(self.graph_origin - y_axis.number_to_point(0))
+        y_axis.shift(-1 * y_axis.number_to_point(0))
         y_axis.rotate(np.pi / 2, about_point=y_axis.number_to_point(0))
         if len(self.y_labeled_nums) > 0:
             if self.exclude_zero_label:
@@ -168,89 +152,150 @@ class Plot(VGroup):
         self.x_axis, self.y_axis = self.axes = VGroup(x_axis, y_axis)
         self.default_graph_colors = it.cycle(self.default_graph_colors)
 
-    def add_dots(self, x=None, y=None, data=None, color=None, radius=None,
-                 fill_opacity=None, stroke_width=None, **kwargs):
-        if data is not None:
-            x = data[0]
-            y = data[1]
-        elif x is None:
-            x = []
-            for i in range(1, len(y)+1):
-                x.append(i)
+    def scatter(self, x, y, size=None, color=None, fill_opacity=None,
+                stroke_width=None, **kwargs):
         if color is None:
-            color = next(self.default_graph_colors_cycle)
-        if radius is None:
-            radius = self.default_dot_radius
+            color = it.cycle([next(self.default_graph_colors_cycle)])
+        else:
+            if is_sequence(color):
+                color = it.cycle(color)
+            else:
+                color = it.cycle([color])
+        if size is None:
+            size = self.default_dot_radius
         if fill_opacity is None:
             fill_opacity = self.default_dot_opacity
         if stroke_width is None:
             stroke_width = self.default_dot_stroke_width
 
-        dot_sequence = VGroup()
+        scatter_sequence = VGroup()
         for i in range(len(y)):
             point = self.coords_to_point(x[i], y[i])
-            dot_sequence.add(Dot(
-                                color=color,
-                                radius=radius,
-                                fill_opacity=fill_opacity,
-                                stroke_width=stroke_width,
-                                **kwargs,
-                                ).move_to(point))
-        if hasattr(self, "dot_sequences") is False:
-            self.dot_sequences = VGroup()
-        self.dot_sequences.add(dot_sequence)
-        self.add(self.dot_sequences)
-        return dot
+            dot = Dot(
+                    color=next(color),
+                    radius=size,
+                    fill_opacity=fill_opacity,
+                    stroke_width=stroke_width,
+                    **kwargs,
+                    ).move_to(point)
+            scatter_sequence.add(dot)
+        if hasattr(self, "scatter_sequences") is False:
+            self.scatter_sequences = VGroup()
+        self.scatter_sequences.add(scatter_sequence)
+        self.add(self.scatter_sequences)
+        return scatter_sequence
 
-    def add_bars(self, x=None, y=None, data=None, color=None, rwidth=None,
-                 fill_opacity=None, stroke_width=None, align=None, **kwargs):
-        if data is not None:
-            x = data[0]
-            y = data[1]
-        elif x is None:
-            x = []
-            for i in range(1,len(y)+1):
-                x.append(i)
+    def bar(self, x, height, width=0.8, align='center', color=None,
+            fill_opacity=None, stroke_width=None, **kwargs):
+        if len(x) != len(height):
+            raise ValueError("'x' and 'height' should be equal sized")
+        if align == 'center':
+            align = ORIGIN
+        elif align == 'edge' or align == 'right':
+            align = RIGHT
+        elif align == 'left':
+            align = LEFT
         if color is None:
-            color = next(self.default_graph_colors_cycle)
-        if rwidth is None:
-            rwidth = self.default_bar_rwidth
+            color = it.cycle([next(self.default_graph_colors_cycle)])
+        else:
+            if is_sequence(color):
+                color = it.cycle(color)
+            else:
+                color = it.cycle([color])
         if fill_opacity is None:
             fill_opacity = self.default_bar_opacity
         if stroke_width is None:
             stroke_width = self.default_bar_stroke_width
-        if align is None:
-            align = self.default_bar_align
 
         bar_sequence = VGroup()
-        for i in range(len(y)):
-            base = self.coords_to_point(x[i], 0)
-            point_x, point_y, point_z = self.coords_to_point(x[i], y[i])
-            point_x0, point_y0, point_z0 = self.coords_to_point(0, 0)
-            if i < len(y)-1:
-                point_x1, point_y1, point_z1 = self.coords_to_point(x[i+1],
-                                                                    y[i+1])
+        p_x0, p_y0, p_z0 = self.coords_to_point(0, 0)
+        for i in range(len(x)):
+            if is_sequence(width):
+                bar_width = width[i]
             else:
-                point_x1, point_y1, point_z1 = self.coords_to_point(x[i-1],
-                                                                    y[i-1])
-            height = point_y - point_y0
-            gap = abs(point_x1 - point_x)
-            width = rwidth*gap
+                bar_width = width
+            p_x1, p_y1, p_z1 = self.coords_to_point(x[i], height[i])
+            p_x2, p_y2, p_z2 = self.coords_to_point(bar_width, 0)
+            bar_height = p_y1 - p_y0
+            bar_width = p_x2 - p_x0
+            bar_center = (p_x1, p_y0, p_z1)
             bar = Rectangle(
-                    height=height,
-                    width=width,
-                    color=color,
+                    height=bar_height,
+                    width=bar_width,
+                    color=next(color),
                     fill_opacity=fill_opacity,
                     stroke_width=stroke_width,
                     **kwargs,
-                    ).next_to(base, UP+align, buff=0)
-            bar.shift((1-rwidth)*align*gap/2)
+                    ).next_to(bar_center, UP+align, buff=0)
             bar_sequence.add(bar)
         if hasattr(self, "bar_sequences") is False:
             self.bar_sequences = VGroup()
         self.bar_sequences.add(bar_sequence)
         self.add(self.bar_sequences)
-        return bar
+        return bar_sequence
+
+    def hist(self, x, bins=None, bin_range=None, density=None, weights=None,
+             cumulative=False, histtype='bar', align='mid',
+             orientation='vertical', rwidth=None, log=False, color=None,
+             label=None, stacked=False, normed=None,
+             fill_opacity=None, stroke_width=None, **kwargs):
+        if bins is None:
+            bins = self.default_hist_bins
+        if bin_range is None:
+            bin_range = (min(x), max(x))
+        if density is None:
+            density = self.default_hist_density
+        if align == 'mid':
+            align = ORIGIN
+        elif align == 'right':
+            align = RIGHT
+        elif align == 'left':
+            align = LEFT
+        if rwidth is None:
+            rwidth = self.default_hist_rwidth
+        if color is None:
+            color = it.cycle([next(self.default_graph_colors_cycle)])
+        else:
+            if is_sequence(color):
+                color = it.cycle(color)
+            else:
+                color = it.cycle([color])
+        if fill_opacity is None:
+            fill_opacity = self.default_bar_opacity
+        if stroke_width is None:
+            stroke_width = self.default_bar_stroke_width
+
+        data, bin_edges = np.histogram(
+            x,
+            bins=bins,
+            range=bin_range,
+            weights=weights,
+            density=density,
+            )
+
+        histogram = VGroup()
+        for i in range(len(bin_edges)-1):
+            x0, y0, z0 = self.coords_to_point(bin_edges[i], 0)
+            x1, y1, z1 = self.coords_to_point(bin_edges[i+1], data[i])
+            bin_width = x1 - x0
+            bin_center = (x0, y0, z0) + bin_width/2 * (RIGHT + align)
+            bar_height = y1 - y0
+            bar_width = rwidth * bin_width
+            bar = Rectangle(
+                height=bar_height,
+                width=bar_width,
+                color=next(color),
+                fill_opacity=fill_opacity,
+                stroke_width=stroke_width,
+                **kwargs,
+                ).next_to(bin_center, UP, buff=0)
+            histogram.add(bar)
+        if hasattr(self, "hist_sequences") is False:
+            self.hist_sequences = VGroup()
+        self.hist_sequences.add(histogram)
+        self.add(self.hist_sequences)
+        return data, bin_edges, histogram
+
 
     def add_curve(self, func, color=None, x_min=None, x_max=None,
                   parameters=None, **kwargs):
@@ -279,8 +324,8 @@ class Plot(VGroup):
         self.add(self.curves)
         return curve
 
-    def copy(self):
-        return self.deepcopy()
+    #def copy(self):
+    #    return self.deepcopy()
 
     def coords_to_point(self, x, y):
         assert(hasattr(self, "x_axis") and hasattr(self, "y_axis"))
