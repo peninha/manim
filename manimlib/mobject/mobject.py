@@ -79,6 +79,23 @@ class Mobject(Container):
                 self.submobjects.remove(mobject)
         return self
 
+    def add_to_back(self, *mobjects):
+        self.set_submobjects(list_update(mobjects, self.submobjects))
+        return self
+
+    def replace_submobject(self, index, new_submob):
+        old_submob = self.submobjects[index]
+        if self in old_submob.parents:
+            old_submob.parents.remove(self)
+        self.submobjects[index] = new_submob
+        self.assemble_family()
+        return self
+
+    def set_submobjects(self, submobject_list):
+        self.remove(*self.submobjects)
+        self.add(*submobject_list)
+        return self
+
     def get_array_attrs(self):
         return ["points"]
 

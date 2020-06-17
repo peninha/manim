@@ -242,6 +242,12 @@ COLOR_MAP = {
     "PURPLE_A": "#CAA3E8",
     "WHITE": "#FFFFFF",
     "BLACK": "#000000",
+    "GREY_A": "#DDDDDD",
+    "GREY_B": "#BBBBBB",
+    "GREY_C": "#888888",
+    "GREY_D": "#444444",
+    "GREY_E": "#222222",
+    # TODO, remove these greys
     "LIGHT_GRAY": "#BBBBBB",
     "LIGHT_GREY": "#BBBBBB",
     "GRAY": "#888888",
