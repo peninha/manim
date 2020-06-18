@@ -15,6 +15,7 @@ class Window(PygletWindow):
     vsync = True
     #samples = 1
     cursor = True
+    position = (100,100)
 
     def __init__(self, scene, **kwargs):
         digest_config(self, kwargs)
