@@ -41,6 +41,7 @@ from manimlib.mobject.mobject import *
 from manimlib.mobject.number_line import *
 from manimlib.mobject.numbers import *
 from manimlib.mobject.probability import *
+from manimlib.mobject.plot import *
 from manimlib.mobject.shape_matchers import *
 from manimlib.mobject.svg.brace import *
 from manimlib.mobject.svg.drawings import *
