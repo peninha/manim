@@ -730,7 +730,7 @@ class Test(Scene):
 class RunSimpleSimulation(Scene):
     CONFIG = {
         "simulation_config": {
-            "person_type": PiPerson,
+            "person_type": DotPerson,
             "n_cities": 1,
             "city_population": 100,
             "person_config": {
