@@ -13,6 +13,7 @@ class ParametricFunction(VMobject):
         "dt": 1e-8,
         # TODO, automatically figure out discontinuities
         "discontinuities": [],
+        "parameters": {},
     }
 
     def __init__(self, function=None, **kwargs):
@@ -24,7 +25,7 @@ class ParametricFunction(VMobject):
         return self.function
 
     def get_point_from_function(self, t):
-        return self.function(t)
+        return self.function(t, **self.parameters)
 
     def init_points(self):
         t_min, t_max = self.t_min, self.t_max
@@ -53,7 +54,8 @@ class ParametricFunction(VMobject):
                 n_inserts = int(norm / self.step_size)
                 full_t_range += list(np.linspace(s1, s2, n_inserts + 1)[1:])
 
-            points = np.array([self.function(t) for t in full_t_range])
+            points = np.array([self.function(t, **self.parameters)
+                               for t in full_t_range])
             valid_indices = np.isfinite(points).all(1)
             points = points[valid_indices]
             if len(points) > 0:
@@ -73,7 +75,7 @@ class FunctionGraph(ParametricFunction):
     def __init__(self, function, **kwargs):
         digest_config(self, kwargs)
         self.parametric_function = \
-            lambda t: np.array([t, function(t), 0])
+            lambda t: np.array([t, function(t, **self.parameters), 0])
         ParametricFunction.__init__(
             self,
             self.parametric_function,
